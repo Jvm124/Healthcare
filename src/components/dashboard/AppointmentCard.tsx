@@ -1,34 +1,25 @@
-import { Bell } from 'lucide-react';
 import type { Appointment } from '@/types/appointment.types';
+import { formatFecha } from '@/utils/formatFecha';
+import Card from '@/components/ui/Card';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 interface Props {
     appointment: Appointment;
 }
 
 const AppointmentCard = ({ appointment }: Props) => {
+    const { fecha, hora } = formatFecha(appointment.fecha);
+
     return (
-        <div className="bg-primary text-white rounded-xl p-4 flex items-center gap-4 shadow">
-            <div className="text-center">
-                <img
-                    src={appointment.doctorFoto || '/assets/doctor-default.png'}
-                    alt={appointment.doctorNombre}
-                    className="w-20 h-20 rounded-full object-cover bg-white"
-                />
-                {appointment.alertaActivada && (
-                    <p className="text-xs mt-1 flex items-center gap-1 justify-center">
-                        <Bell size={12} /> Alerta activada
-                    </p>
-                )}
+        <Card className="p-4 flex items-center justify-between gap-4">
+            <div>
+                <h3 className="font-semibold text-gray-900">{appointment.medicoNombre}</h3>
+                <p className="text-sm text-gray-500">
+                    {appointment.especialidad} · {fecha} · {hora}
+                </p>
             </div>
-            <div className="flex-1">
-                <h3 className="text-xl font-bold">{appointment.doctorNombre}</h3>
-                <p className="text-sm opacity-90">Especialista en {appointment.doctorEspecialidad}</p>
-            </div>
-            <div className="text-right">
-                <p>{appointment.fecha}</p>
-                <p>{appointment.hora}</p>
-            </div>
-        </div>
+            <StatusBadge estado={appointment.estado} />
+        </Card>
     );
 };
 

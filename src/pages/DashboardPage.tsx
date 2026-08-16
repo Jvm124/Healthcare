@@ -1,37 +1,26 @@
 import { useEffect, useState } from 'react';
 import { Bell, UserCircle, Search, Calendar, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Sidebar from '@/components/dashboard/Sidebar';
 import AppointmentCard from '@/components/dashboard/AppointmentCard';
 import Spinner from '@/components/ui/Spinner';
 import { appointmentsApi } from '@/api/appointmentsApi';
+import { getErrorMessage } from '@/utils/getErrorMessage';
 import type { Appointment } from '@/types/appointment.types';
 
 const DashboardPage = () => {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [query, setQuery] = useState('');
 
     useEffect(() => {
-        (async () => {
-            try {
-                const data = await appointmentsApi.getMyAppointments();
-                setAppointments(data);
-            } catch {
-                // En caso de error puedes usar datos mock
-                setAppointments([
-                    {
-                        id: 1,
-                        doctorNombre: 'Dr. Juan Vega Lapaz',
-                        doctorEspecialidad: 'Cardiología',
-                        fecha: '30 de abril de 2025',
-                        hora: '10 a.m.',
-                        alertaActivada: true,
-                    },
-                ]);
-            } finally {
-                setLoading(false);
-            }
-        })();
+        appointmentsApi
+            .getMyAppointments()
+            .then(setAppointments)
+            // Sin mock: si falla, mostramos el error real (usando tu helper).
+            .catch((err) => setError(getErrorMessage(err, 'No se pudieron cargar tus citas')))
+            .finally(() => setLoading(false));
     }, []);
 
     if (loading) return <Spinner fullScreen />;
@@ -65,16 +54,28 @@ const DashboardPage = () => {
             <main className="max-w-5xl mx-auto p-6 space-y-8">
                 <section>
                     <h2 className="text-lg font-semibold mb-3">Citas programadas</h2>
-                    <div className="space-y-3">
-                        {appointments.map((a) => <AppointmentCard key={a.id} appointment={a} />)}
-                    </div>
+
+                    {error ? (
+                        <p className="text-red-500 text-sm">{error}</p>
+                    ) : appointments.length === 0 ? (
+                        <p className="text-gray-500 text-sm">No tienes citas programadas todavía.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {appointments.map((a) => (
+                                <AppointmentCard key={a.id} appointment={a} />
+                            ))}
+                        </div>
+                    )}
                 </section>
 
                 <section className="grid grid-cols-2 gap-4 max-w-md">
-                    <button className="border rounded-lg p-6 flex flex-col items-center gap-2 hover:shadow-md transition">
+                    <Link
+                        to="/reservar"
+                        className="border rounded-lg p-6 flex flex-col items-center gap-2 hover:shadow-md transition"
+                    >
                         <Calendar size={48} className="text-primary" />
                         <span className="text-sm font-medium">Reservar cita médica</span>
-                    </button>
+                    </Link>
                     <button className="border rounded-lg p-6 flex flex-col items-center gap-2 hover:shadow-md transition">
                         <FileText size={48} className="text-primary" />
                         <span className="text-sm font-medium">Mis documentos</span>

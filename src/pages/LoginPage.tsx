@@ -9,6 +9,14 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/hooks/useAuth';
 import { loginSchema, type LoginFormData } from '@/schemas/loginSchema';
 
+// Mapa: a qué ruta va cada rol después de iniciar sesión.
+// Si mañana agregas un rol nuevo, solo lo añades aquí.
+const RUTA_POR_ROL = {
+    PACIENTE: '/paciente',
+    MEDICO: '/medico',
+    ADMINISTRADOR: '/admin',
+} as const;
+
 const LoginPage = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
@@ -36,9 +44,13 @@ const LoginPage = () => {
         // }
 
         try {
-            // ✅ Mientras no haya captcha, mandamos solo email y password
-            await login({ ...data, recaptchaToken: '' });
-            navigate('/dashboard');
+            // login ahora devuelve el usuario, así podemos leer su rol.
+            const usuario = await login({ ...data, recaptchaToken: '' });
+
+            // Redirigimos según el rol. Si por alguna razón el rol no está en el
+            // mapa, lo mandamos al login de nuevo por seguridad.
+            const destino = RUTA_POR_ROL[usuario.rol] ?? '/login';
+            navigate(destino);
         } catch (err: any) {
             setServerError(err?.response?.data?.message || 'Credenciales inválidas');
             // recaptchaRef.current?.reset();
@@ -65,15 +77,15 @@ const LoginPage = () => {
                             type="email"
                             placeholder="Correo"
                             autoComplete="email"
-                            {...register('email')}
-                            error={errors.email?.message}
+                            {...register('correo')}
+                            error={errors.correo?.message}
                         />
                         <Input
                             type="password"
                             placeholder="Contraseña"
                             autoComplete="current-password"
-                            {...register('password')}
-                            error={errors.password?.message}
+                            {...register('contrasenia')}
+                            error={errors.contrasenia?.message}
                         />
 
                         {/* 🔒 reCAPTCHA temporalmente desactivado

@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, type ReactNode } from 'react';
 import { authApi } from '@/api/authApi';
 import { tokenStorage } from '@/utils/tokenStorage';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth.types';
@@ -7,8 +7,8 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     isAuthenticated: boolean;
-    login: (credentials: LoginRequest) => Promise<void>;
-    register: (data: RegisterRequest) => Promise<void>;
+    login: (credentials: LoginRequest) => Promise<User>;
+    register: (data: RegisterRequest) => Promise<User>;
     logout: () => Promise<void>;
 }
 
@@ -20,34 +20,41 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    // El estado inicial ya depende de si hay token: si no hay, no hay nada que cargar.
+    const [loading, setLoading] = useState(() => tokenStorage.get() !== null);
 
     useEffect(() => {
-        const initAuth = async () => {
-            const token = tokenStorage.get();
-            if (token) {
-                try {
-                    const me = await authApi.me();
-                    setUser(me);
-                } catch {
-                    tokenStorage.remove();
-                }
-            }
-            setLoading(false);
-        };
-        initAuth();
+        const token = tokenStorage.get();
+        if (!token) {
+            return;
+        }
+        authApi.getMe()
+            .then(setUser)
+            .catch(() => {
+                tokenStorage.remove();
+                setUser(null);
+            })
+            .finally(() => setLoading(false));
     }, []);
 
-    const login = async (credentials: LoginRequest) => {
-        const { token, user: u } = await authApi.login(credentials);
-        tokenStorage.set(token);
-        setUser(u);
+    const register = async (data: RegisterRequest): Promise<User> => {
+        await authApi.registrarPaciente({
+            nombre: data.nombreCompleto,
+            email: data.email,
+            telefono: data.telefono,
+            documento: data.dni,
+            direccion: data.direccion,
+            contrasenia: data.password,
+        });
+        return login({ correo: data.email, contrasenia: data.password });
     };
 
-    const register = async (data: RegisterRequest) => {
-        const { token, user: u } = await authApi.register(data);
+    const login = async (credentials: LoginRequest): Promise<User> => {
+        const { token } = await authApi.login(credentials);
         tokenStorage.set(token);
-        setUser(u);
+        const usuario = await authApi.getMe();
+        setUser(usuario);
+        return usuario;
     };
 
     const logout = async () => {
@@ -62,9 +69,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
 
     return (
-        <AuthContext.Provider
-            value={{ user, loading, isAuthenticated: !!user, login, register, logout }}
-        >
+        <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

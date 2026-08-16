@@ -24,7 +24,7 @@ const RegisterPage = () => {
         try {
             const { confirmPassword, acceptTerms, ...payload } = data;
             await registerUser(payload);
-            navigate('/dashboard');
+            navigate('/paciente');   // ← antes '/dashboard' (que da 404)
         } catch (err: any) {
             setServerError(err?.response?.data?.message || 'No se pudo crear la cuenta');
         }
@@ -46,7 +46,16 @@ const RegisterPage = () => {
                         <Input type="email" placeholder="Correo electrónico" {...register('email')} error={errors.email?.message} />
                         <Input type="password" placeholder="Contraseña" autoComplete="new-password" {...register('password')} error={errors.password?.message} />
                         <Input type="password" placeholder="Repetir contraseña" autoComplete="new-password" {...register('confirmPassword')} error={errors.confirmPassword?.message} />
-
+                        <div className="md:col-span-2 border-t pt-4 mt-2">
+                            <p className="font-semibold text-sm mb-2">Dirección</p>
+                        </div>
+                        <Input placeholder="Calle / Av." {...register('direccion.calle')} error={errors.direccion?.calle?.message} />
+                        <Input placeholder="Número (opcional)" {...register('direccion.numero')} error={errors.direccion?.numero?.message} />
+                        <Input placeholder="Complemento (opcional)" {...register('direccion.complemento')} error={errors.direccion?.complemento?.message} />
+                        <Input placeholder="Barrio / Distrito" {...register('direccion.barrio')} error={errors.direccion?.barrio?.message} />
+                        <Input placeholder="Ciudad" {...register('direccion.ciudad')} error={errors.direccion?.ciudad?.message} />
+                        <Input placeholder="Código postal" maxLength={5} {...register('direccion.codigo_postal')} error={errors.direccion?.codigo_postal?.message} />
+                        <Input placeholder="Departamento" {...register('direccion.estado')} error={errors.direccion?.estado?.message} />
                         <div className="md:col-span-2 flex items-start gap-2 text-sm mt-2">
                             <input type="checkbox" id="terms" {...register('acceptTerms')} className="mt-1" />
                             <label htmlFor="terms">

@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-    email: z
+    correo: z
         .string()
         .min(1, 'El correo es obligatorio')
         .email('Correo inválido')
         .max(100, 'Máximo 100 caracteres'),
-    password: z
+    contrasenia: z
         .string()
-        .min(6, 'Mínimo 6 caracteres')
+        .min(2, 'Mínimo 2 caracteres')
         .max(64, 'Máximo 64 caracteres'),
 });
 

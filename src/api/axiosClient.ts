@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { tokenStorage } from '@/utils/tokenStorage';
 
-// @ts-ignore
+
 const axiosClient = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL,
     timeout: 15000,
