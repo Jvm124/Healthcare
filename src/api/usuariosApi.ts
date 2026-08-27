@@ -13,8 +13,17 @@ export const usuariosApi = {
         await axiosClient.post('/usuarios', payload);
     },
 
-    // Baja lógica (DELETE /usuarios/{id}): el backend pone activo = false.
-    desactivar: async (id: number): Promise<void> => {
-        await axiosClient.delete(`/usuarios/${id}`);
+
+    suspender: async (id: number): Promise<void> => {
+        await axiosClient.patch(`/usuarios/${id}/suspender`);
+    },
+
+
+    reactivar: async (id: number): Promise<void> => {
+        await axiosClient.patch(`/usuarios/${id}/reactivar`);
+    },
+
+    darDeBaja: async (id: number): Promise<void> => {
+        await axiosClient.patch(`/usuarios/${id}/baja`);
     },
 };

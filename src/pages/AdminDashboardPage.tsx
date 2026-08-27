@@ -11,27 +11,34 @@ import { useAuth } from '@/hooks/useAuth';
 import { usuariosApi } from '@/api/usuariosApi';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 import { registrarUsuarioSchema, type RegistrarUsuarioFormData } from '@/schemas/registrarUsuarioSchema';
-import type { UsuarioLista } from '@/types/usuario.types';
+import type { UsuarioLista, EstadoUsuario } from '@/types/usuario.types';
 
 const nav: NavItem[] = [
     { label: 'Usuarios', to: '/admin', icon: Users },
     { label: 'Médicos', to: '/admin/medicos', icon: Stethoscope },
 ];
 
-const EstadoPill = ({ activo }: { activo: boolean }) =>
-    activo ? (
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">Activo</span>
-    ) : (
-        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Inactivo</span>
-    );
+const ESTADO_STYLES: Record<EstadoUsuario, string> = {
+    ACTIVO: 'bg-green-100 text-green-700',
+    SUSPENDIDO: 'bg-amber-100 text-amber-700',
+    BAJA: 'bg-gray-100 text-gray-500',
+};
 
-const BotonDesactivar = ({ habilitado, onClick }: { habilitado: boolean; onClick: () => void }) => (
-    <button
-        onClick={onClick}
-        disabled={!habilitado}
-        className="text-sm font-medium text-red-500 hover:underline disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
-    >
-        Desactivar
+const ESTADO_LABEL: Record<EstadoUsuario, string> = {
+    ACTIVO: 'Activo',
+    SUSPENDIDO: 'Suspendido',
+    BAJA: 'Baja',
+};
+
+const EstadoPill = ({ estado }: { estado: EstadoUsuario }) => (
+    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${ESTADO_STYLES[estado]}`}>
+        {ESTADO_LABEL[estado]}
+    </span>
+);
+
+const AccionLink = ({ label, color, onClick }: { label: string; color: string; onClick: () => void }) => (
+    <button onClick={onClick} className={`text-sm font-medium hover:underline ${color}`}>
+        {label}
     </button>
 );
 
@@ -64,6 +71,7 @@ const AdminDashboardPage = () => {
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         cargar();
     }, [cargar]);
 
@@ -80,17 +88,55 @@ const AdminDashboardPage = () => {
         }
     };
 
-    const desactivar = async (u: UsuarioLista) => {
-        if (!window.confirm(`¿Desactivar a ${u.correo}? No podrá iniciar sesión.`)) return;
+    const ejecutar = async (accion: () => Promise<void>, errorMsg: string) => {
+        setListError('');
         try {
-            await usuariosApi.desactivar(u.id);
+            await accion();
             await cargar();
         } catch (err) {
-            setListError(getErrorMessage(err, 'No se pudo desactivar el usuario'));
+            setListError(getErrorMessage(err, errorMsg));
         }
     };
 
-    const puedeDesactivar = (u: UsuarioLista) => u.activo && u.id !== user?.id;
+    const suspender = (u: UsuarioLista) => {
+        if (!window.confirm(`¿Suspender a ${u.correo}? No podrá iniciar sesión hasta reactivarlo.`)) return;
+        ejecutar(() => usuariosApi.suspender(u.id), 'No se pudo suspender el usuario');
+    };
+
+    const reactivar = (u: UsuarioLista) =>
+        ejecutar(() => usuariosApi.reactivar(u.id), 'No se pudo reactivar el usuario');
+
+    const darDeBaja = (u: UsuarioLista) => {
+        if (!window.confirm(`¿Dar de baja a ${u.correo}? Se puede reincorporar más adelante.`)) return;
+        ejecutar(() => usuariosApi.darDeBaja(u.id), 'No se pudo dar de baja el usuario');
+    };
+
+    // Los botones disponibles dependen del estado (refleja las transiciones válidas del backend).
+    // Un usuario no puede accionar sobre su propia cuenta.
+    const Acciones = ({ u }: { u: UsuarioLista }) => {
+        if (u.id === user?.id) {
+            return <span className="text-xs text-gray-400">—</span>;
+        }
+        return (
+            <div className="inline-flex gap-3">
+                {u.estado === 'ACTIVO' && (
+                    <>
+                        <AccionLink label="Suspender" color="text-amber-600" onClick={() => suspender(u)} />
+                        <AccionLink label="Dar de baja" color="text-red-500" onClick={() => darDeBaja(u)} />
+                    </>
+                )}
+                {u.estado === 'SUSPENDIDO' && (
+                    <>
+                        <AccionLink label="Reactivar" color="text-green-600" onClick={() => reactivar(u)} />
+                        <AccionLink label="Dar de baja" color="text-red-500" onClick={() => darDeBaja(u)} />
+                    </>
+                )}
+                {u.estado === 'BAJA' && (
+                    <AccionLink label="Reincorporar" color="text-green-600" onClick={() => reactivar(u)} />
+                )}
+            </div>
+        );
+    };
 
     return (
         <DashboardLayout title="Administración" navItems={nav}>
@@ -162,10 +208,10 @@ const AdminDashboardPage = () => {
                                         <td className="py-3 pr-4">{u.correo}</td>
                                         <td className="py-3 pr-4">{u.rol}</td>
                                         <td className="py-3 pr-4">
-                                            <EstadoPill activo={u.activo} />
+                                            <EstadoPill estado={u.estado} />
                                         </td>
                                         <td className="py-3 text-right">
-                                            <BotonDesactivar habilitado={puedeDesactivar(u)} onClick={() => desactivar(u)} />
+                                            <Acciones u={u} />
                                         </td>
                                     </tr>
                                 ))}
@@ -177,14 +223,12 @@ const AdminDashboardPage = () => {
                                     <div key={u.id} className="border border-gray-200 rounded-xl p-4">
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="font-semibold break-all">{u.correo}</span>
-                                            <EstadoPill activo={u.activo} />
+                                            <EstadoPill estado={u.estado} />
                                         </div>
                                         <p className="text-sm text-gray-500">{u.rol}</p>
-                                        {puedeDesactivar(u) && (
-                                            <div className="text-right mt-2">
-                                                <BotonDesactivar habilitado onClick={() => desactivar(u)} />
-                                            </div>
-                                        )}
+                                        <div className="text-right mt-2">
+                                            <Acciones u={u} />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
