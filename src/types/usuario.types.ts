@@ -1,11 +1,13 @@
 export type Rol = 'ADMINISTRADOR' | 'RECEPCIONISTA' | 'MEDICO' | 'PACIENTE';
 
+export type EstadoUsuario = 'ACTIVO' | 'SUSPENDIDO' | 'BAJA';
+
 // Coincide con DatosListaUsuario del backend
 export interface UsuarioLista {
     id: number;
     correo: string;
     rol: Rol;
-    activo: boolean;
+    estado: EstadoUsuario;
 }
 
 // Lo que enviamos a POST /usuarios (DatosRegistroUsuario)
